@@ -1,14 +1,33 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Pressable } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { submitApplication } from './api';
 
 export default function Registration({ route, navigation }) {
   const { scholarship } = route.params || {};
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
 
-  const handleSubmit = () => {
-    // Navigate to Pending screen upon submitting registration
-    navigation.navigate('Pending', { scholarship, applicant: { fullName, email } });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async () => {
+    if (fullName.trim().length < 2) return setError('Please enter your full name.');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return setError('Please enter a valid email.');
+    setError('');
+    setBusy(true);
+    try {
+      const result = await submitApplication(scholarship, fullName.trim(), email.trim());
+      navigation.navigate('Pending', {
+        scholarship,
+        applicant: { fullName, email },
+        applicationId: result.id,
+        submittedAt: result.submittedAt || Date.now(),
+      });
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -35,17 +54,21 @@ export default function Registration({ route, navigation }) {
         onChangeText={setEmail}
       />
 
+      {!!error && <Text style={styles.error}>{error}</Text>}
+
       <Pressable 
         style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
         onPress={handleSubmit}
+        disabled={busy}
       >
-        <Text style={styles.buttonText}>Submit Application</Text>
+        {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Submit Application</Text>}
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  error: { color: '#B00020', marginBottom: 8 },
   container: {
     flex: 1,
     padding: 24,

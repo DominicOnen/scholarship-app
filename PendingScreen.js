@@ -1,8 +1,20 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { getApplicationStatus } from './api';
 
 export default function PendingScreen({ route, navigation }) {
-  const { scholarship } = route.params || {};
+  const { scholarship, applicationId, submittedAt } = route.params || {};
+  const [checking, setChecking] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const checkStatus = async () => {
+    setChecking(true);
+    const { status } = await getApplicationStatus(applicationId, submittedAt);
+    setChecking(false);
+    if (status === 'accepted') navigation.navigate('Acceptance', { scholarship });
+    else if (status === 'rejected') setMessage('Unfortunately your application was not successful.');
+    else setMessage('Still under review. Please check again in a moment.');
+  };
 
   return (
     <View style={styles.container}>
@@ -16,18 +28,21 @@ export default function PendingScreen({ route, navigation }) {
         Your application for <Text style={styles.bold}>{scholarship?.name || 'the scholarship'}</Text> has been received and is currently being evaluated by the board.
       </Text>
 
-      {/* Button to simulate acceptance for testing */}
+      {!!message && <Text style={styles.message}>{message}</Text>}
+
       <Pressable 
         style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-        onPress={() => navigation.navigate('Acceptance', { scholarship })}
+        onPress={checkStatus}
+        disabled={checking}
       >
-        <Text style={styles.buttonText}>Check Status Update</Text>
+        {checking ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Check Status Update</Text>}
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  message: { color: '#856404', textAlign: 'center', marginBottom: 16 },
   container: {
     flex: 1,
     padding: 24,
